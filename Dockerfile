@@ -1,31 +1,37 @@
 # Stage 1: Build React App
 FROM node:18 AS build-stage
 
-# Set working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Copy React app files
-COPY client/package.json client/package-lock.json ./client/
-RUN cd client && npm install
+# Copy package files first (for better caching)
+COPY package*.json ./
 
-COPY client ./client
-RUN cd client && npm run build
+# Install dependencies
+RUN npm install
 
-# Stage 2: Set Up Node.js Server and Serve React App
+# Copy the rest of the application
+COPY . .
+
+# Build React app
+RUN npm run build
+
+# Stage 2: Production
 FROM node:18 AS production-stage
 
-# Set working directory inside the container
 WORKDIR /app
 
-# Copy server files
-COPY server/package.json server/package-lock.json ./server/
-RUN cd server && npm install
+# Copy built files from build stage
+COPY --from=build-stage /app/build ./build
 
-# Copy built React app from Stage 1 to the public directory in the server
-COPY --from=build-stage /app/client/build ./server/public
+# Copy package files
+COPY package*.json ./
 
-# Expose the server port
+# Install production dependencies only
+RUN npm install --production
+
+# Expose port
 EXPOSE 3000
 
-# Start the Node.js server
-CMD ["node", "server/index.js"]
+# Start the server
+CMD ["npm", "start"]

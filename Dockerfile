@@ -7,7 +7,8 @@ WORKDIR /app
 # Copy package files first (for better caching)
 COPY package*.json ./
 
-# Install dependencies
+# Install ALL dependencies including web-vitals
+RUN npm install web-vitals
 RUN npm install
 
 # Copy the rest of the application
@@ -16,22 +17,14 @@ COPY . .
 # Build React app
 RUN npm run build
 
-# Stage 2: Production
-FROM node:18 AS production-stage
-
-WORKDIR /app
+# Stage 2: Production with Nginx
+FROM nginx:alpine
 
 # Copy built files from build stage
-COPY --from=build-stage /app/build ./build
+COPY --from=build-stage /app/build /usr/share/nginx/html
 
-# Copy package files
-COPY package*.json ./
+# Expose port 80
+EXPOSE 80
 
-# Install production dependencies only
-RUN npm install --production
-
-# Expose port
-EXPOSE 3000
-
-# Start the server
-CMD ["npm", "start"]
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
